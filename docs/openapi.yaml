@@ -1,0 +1,1113 @@
+openapi: 3.1.0
+info:
+  title: Diké API
+  version: 1.0.0
+  description: Contract-first REST API for Diké. See API_CONTRACTS.md for implementation and safety rules.
+servers:
+- url: http://localhost:8000
+  description: Local development
+tags:
+- name: Health
+- name: Cases
+- name: Analysis
+- name: Legal assistance
+- name: Eligibility
+- name: Documents
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      operationId: getHealth
+      summary: Health check
+      responses:
+        '200':
+          description: Service is available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/cases:
+    post:
+      tags:
+      - Cases
+      operationId: createCase
+      security:
+      - BearerAuth: []
+      summary: Create a case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaseCreateRequest'
+      responses:
+        '201':
+          description: Case created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    get:
+      tags:
+      - Cases
+      operationId: listCases
+      security:
+      - BearerAuth: []
+      summary: List cases owned by the current user
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Paginated cases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/cases/{case_id}:
+    parameters:
+    - name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags:
+      - Cases
+      operationId: getCase
+      security:
+      - BearerAuth: []
+      summary: Get one case owned by the current user
+      responses:
+        '200':
+          description: Case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/cases/{case_id}/analyze:
+    parameters:
+    - name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    post:
+      tags:
+      - Analysis
+      operationId: analyzeCase
+      security:
+      - BearerAuth: []
+      summary: Run synchronous case analysis
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeCaseRequest'
+      responses:
+        '200':
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/cases/{case_id}/analysis:
+    parameters:
+    - name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags:
+      - Analysis
+      operationId: getLatestAnalysis
+      security:
+      - BearerAuth: []
+      summary: Get latest analysis for a case
+      responses:
+        '200':
+          description: Latest analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/legal-aid:
+    get:
+      tags:
+      - Legal assistance
+      operationId: searchLegalAid
+      security:
+      - BearerAuth: []
+      summary: Search the legal assistance directory
+      parameters:
+      - name: state
+        in: query
+        schema:
+          type: string
+      - name: issue_category
+        in: query
+        schema:
+          $ref: '#/components/schemas/IssueCategory'
+      - name: assistance_type
+        in: query
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      responses:
+        '200':
+          description: Directory results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalAidListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/eligibility/check:
+    post:
+      tags:
+      - Eligibility
+      operationId: checkEligibility
+      security:
+      - BearerAuth: []
+      summary: Run a preliminary eligibility screen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EligibilityCheckRequest'
+      responses:
+        '200':
+          description: Preliminary result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/cases/{case_id}/summary:
+    parameters:
+    - name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    post:
+      tags:
+      - Cases
+      operationId: generateCaseSummary
+      security:
+      - BearerAuth: []
+      summary: Generate a factual summary for user review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummaryGenerateRequest'
+      responses:
+        '200':
+          description: Generated summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+      - Cases
+      operationId: updateCaseSummary
+      security:
+      - BearerAuth: []
+      summary: Save the user's edited summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SummaryUpdateRequest'
+      responses:
+        '200':
+          description: Updated summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/documents:
+    post:
+      tags:
+      - Documents
+      operationId: uploadDocument
+      security:
+      - BearerAuth: []
+      summary: Upload a private case document (P1; security gate applies)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentUploadRequest'
+      responses:
+        '201':
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '413':
+          description: File too large
+        '415':
+          description: Unsupported media type
+  /api/v1/cases/{case_id}/documents:
+    parameters:
+    - name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags:
+      - Documents
+      operationId: listCaseDocuments
+      security:
+      - BearerAuth: []
+      summary: List documents for an owned case (P1)
+      responses:
+        '200':
+          description: Documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/documents/{document_id}/download:
+    parameters:
+    - name: document_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags:
+      - Documents
+      operationId: getDocumentDownloadUrl
+      security:
+      - BearerAuth: []
+      summary: Get short-lived private download URL (P1)
+      responses:
+        '200':
+          description: Short-lived signed URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDownloadResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found or not owned
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Validation failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+    ErrorDetail:
+      type: object
+      required:
+      - field
+      - issue
+      properties:
+        field:
+          type: string
+        issue:
+          type: string
+    ErrorBody:
+      type: object
+      required:
+      - code
+      - message
+      - details
+      - request_id
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+        request_id:
+          type: string
+          format: uuid
+    ErrorResponse:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+    IssueCategory:
+      type: string
+      enum:
+      - landlord_tenant
+      - employment_unpaid_wages
+      - contract_consumer
+      - other
+      - unknown
+    CaseStatus:
+      type: string
+      enum:
+      - draft
+      - submitted
+      - analysis_pending
+      - analysis_ready
+      - needs_clarification
+      - archived
+    VerificationStatus:
+      type: string
+      enum:
+      - verified
+      - unverified
+      - stale
+      - demo_only
+      - rejected
+    CaseCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - title
+      - narrative
+      - country_code
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        narrative:
+          type: string
+          minLength: 20
+          maxLength: 10000
+        issue_category:
+          $ref: '#/components/schemas/IssueCategory'
+          default: unknown
+        country_code:
+          type: string
+          const: NG
+        state:
+          type:
+          - string
+          - 'null'
+          maxLength: 100
+        relevant_location:
+          type:
+          - string
+          - 'null'
+          maxLength: 160
+        event_date:
+          type:
+          - string
+          - 'null'
+          format: date
+    Case:
+      type: object
+      required:
+      - id
+      - title
+      - narrative
+      - issue_category
+      - country_code
+      - state
+      - relevant_location
+      - event_date
+      - status
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        narrative:
+          type: string
+        issue_category:
+          $ref: '#/components/schemas/IssueCategory'
+        country_code:
+          type: string
+          const: NG
+        state:
+          type:
+          - string
+          - 'null'
+        relevant_location:
+          type:
+          - string
+          - 'null'
+        event_date:
+          type:
+          - string
+          - 'null'
+          format: date
+        status:
+          $ref: '#/components/schemas/CaseStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CaseListItem:
+      type: object
+      required:
+      - id
+      - title
+      - issue_category
+      - state
+      - status
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        issue_category:
+          $ref: '#/components/schemas/IssueCategory'
+        state:
+          type:
+          - string
+          - 'null'
+        status:
+          $ref: '#/components/schemas/CaseStatus'
+        updated_at:
+          type: string
+          format: date-time
+    CaseListResponse:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseListItem'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    AdditionalAnswer:
+      type: object
+      required:
+      - question_key
+      - answer
+      properties:
+        question_key:
+          type: string
+        answer:
+          type: string
+          maxLength: 2000
+    AnalyzeCaseRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        additional_answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdditionalAnswer'
+          default: []
+    IssueClassification:
+      type: object
+      required:
+      - category
+      - label
+      - confidence
+      - reason
+      properties:
+        category:
+          $ref: '#/components/schemas/IssueCategory'
+        label:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reason:
+          type: string
+    JurisdictionResult:
+      type: object
+      required:
+      - country_code
+      - state
+      - basis
+      - confidence
+      - needs_clarification
+      - questions
+      properties:
+        country_code:
+          type:
+          - string
+          - 'null'
+        state:
+          type:
+          - string
+          - 'null'
+        basis:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        needs_clarification:
+          type: boolean
+        questions:
+          type: array
+          items:
+            type: string
+    LegalSource:
+      type: object
+      required:
+      - id
+      - title
+      - issuing_authority
+      - jurisdiction_country
+      - jurisdiction_state
+      - source_url
+      - provision
+      - verification_status
+      - last_verified_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        issuing_authority:
+          type: string
+        jurisdiction_country:
+          type: string
+        jurisdiction_state:
+          type:
+          - string
+          - 'null'
+        source_url:
+          type: string
+          format: uri
+        provision:
+          type:
+          - string
+          - 'null'
+        effective_from:
+          type:
+          - string
+          - 'null'
+          format: date
+        effective_to:
+          type:
+          - string
+          - 'null'
+          format: date
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        last_verified_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    AnalysisClaim:
+      type: object
+      required:
+      - text
+      - source_ids
+      - provision
+      - qualification
+      properties:
+        text:
+          type: string
+        source_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        provision:
+          type:
+          - string
+          - 'null'
+        qualification:
+          type:
+          - string
+          - 'null'
+    NextStep:
+      type: object
+      required:
+      - title
+      - description
+      - urgency
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        urgency:
+          type: string
+          enum:
+          - normal
+          - high
+          - urgent
+    Analysis:
+      type: object
+      required:
+      - analysis_id
+      - case_id
+      - status
+      - issue_classification
+      - jurisdiction
+      - summary
+      - claims
+      - sources
+      - next_steps
+      - uncertainties
+      - urgent_help
+      - created_at
+      properties:
+        analysis_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - completed
+          - needs_clarification
+        issue_classification:
+          $ref: '#/components/schemas/IssueClassification'
+        jurisdiction:
+          $ref: '#/components/schemas/JurisdictionResult'
+        summary:
+          type: string
+        claims:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalysisClaim'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/LegalSource'
+        next_steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/NextStep'
+        uncertainties:
+          type: array
+          items:
+            type: string
+        urgent_help:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    OrganisationContact:
+      type: object
+      properties:
+        website:
+          type:
+          - string
+          - 'null'
+          format: uri
+        email:
+          type:
+          - string
+          - 'null'
+          format: email
+        phone:
+          type:
+          - string
+          - 'null'
+        address:
+          type:
+          - string
+          - 'null'
+    Organisation:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - service_areas
+      - coverage
+      - assistance_types
+      - contact
+      - source_url
+      - verification_status
+      - last_verified_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        service_areas:
+          type: array
+          items:
+            type: string
+        coverage:
+          type: array
+          items:
+            type: string
+        assistance_types:
+          type: array
+          items:
+            type: string
+        contact:
+          $ref: '#/components/schemas/OrganisationContact'
+        source_url:
+          type: string
+          format: uri
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        last_verified_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    LegalAidListResponse:
+      type: object
+      required:
+      - items
+      - page
+      - page_size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Organisation'
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+    EligibilityAnswer:
+      type: object
+      required:
+      - criterion_key
+      - value
+      properties:
+        criterion_key:
+          type: string
+        value: {}
+    EligibilityCheckRequest:
+      type: object
+      required:
+      - organisation_id
+      - answers
+      properties:
+        organisation_id:
+          type: string
+          format: uuid
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/EligibilityAnswer'
+    EligibilityCriterionResult:
+      type: object
+      required:
+      - criterion_key
+      - result
+      - source_id
+      - source_text
+      properties:
+        criterion_key:
+          type: string
+        result:
+          type: string
+          enum:
+          - met
+          - not_met
+          - unknown
+        source_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        source_text:
+          type:
+          - string
+          - 'null'
+    EligibilityCheckResponse:
+      type: object
+      required:
+      - result
+      - explanation
+      - criteria_evaluated
+      - disclaimer
+      properties:
+        result:
+          type: string
+          enum:
+          - potentially_eligible
+          - criteria_not_met
+          - insufficient_information
+          - unavailable
+        explanation:
+          type: string
+        criteria_evaluated:
+          type: array
+          items:
+            $ref: '#/components/schemas/EligibilityCriterionResult'
+        disclaimer:
+          type: string
+    SummaryGenerateRequest:
+      type: object
+      required:
+      - format
+      properties:
+        format:
+          type: string
+          enum:
+          - chronological
+          - concise
+    SummaryUpdateRequest:
+      type: object
+      required:
+      - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 20000
+    SummaryFact:
+      type: object
+      required:
+      - fact_id
+      - provenance
+      properties:
+        fact_id:
+          type: string
+          format: uuid
+        provenance:
+          type: string
+          enum:
+          - user_supplied
+          - user_approved
+    CaseSummary:
+      type: object
+      required:
+      - id
+      - case_id
+      - content
+      - facts_used
+      - requires_user_review
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        facts_used:
+          type: array
+          items:
+            $ref: '#/components/schemas/SummaryFact'
+        requires_user_review:
+          type: boolean
+          const: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DocumentUploadRequest:
+      type: object
+      required:
+      - case_id
+      - file
+      properties:
+        case_id:
+          type: string
+          format: uuid
+        file:
+          type: string
+          format: binary
+    Document:
+      type: object
+      required:
+      - id
+      - case_id
+      - filename
+      - mime_type
+      - size_bytes
+      - processing_status
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        mime_type:
+          type: string
+        size_bytes:
+          type: integer
+          minimum: 1
+        processing_status:
+          type: string
+          enum:
+          - uploaded
+          - scanning
+          - processed
+          - failed
+          - rejected
+        created_at:
+          type: string
+          format: date-time
+    DocumentListResponse:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+    DocumentDownloadResponse:
+      type: object
+      required:
+      - url
+      - expires_at
+      properties:
+        url:
+          type: string
+          format: uri
+        expires_at:
+          type: string
+          format: date-time
